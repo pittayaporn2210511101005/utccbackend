@@ -74,8 +74,6 @@
 			<version>5.8.0</version>
 		</dependency>
 
-
-
 	</dependencies>
 
 	<build>

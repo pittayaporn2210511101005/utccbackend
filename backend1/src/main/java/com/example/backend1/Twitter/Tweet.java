@@ -8,11 +8,10 @@ import jakarta.persistence.Column;
 public class Tweet {
 
     @Id
-    private String id; // id ของ tweet
+    private String id;
 
     @Column(length = 500)
-    private String text; // ข้อความของ tweet
-
+    private String text;
     private String authorId;
 
     private String createdAt;

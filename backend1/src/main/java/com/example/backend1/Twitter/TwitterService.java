@@ -16,7 +16,7 @@ public class TwitterService {
     private final TweetRepository tweetRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private static final String BEARER_TOKEN = "YOUR_BEARER_TOKEN_HERE";
+    private static final String BEARER_TOKEN = "ใส่api ของพวกมึงเอง";
 
     public TwitterService(WebClient.Builder builder, TweetRepository tweetRepository) {
         this.webClient = builder.baseUrl("https://api.twitter.com/2").build();
@@ -29,7 +29,7 @@ public class TwitterService {
                     .uri(uriBuilder -> uriBuilder
                             .path("/tweets/search/recent")
                             .queryParam("query", keyword)
-                            .queryParam("max_results", "30")
+                            .queryParam("max_results", "100")
                             .queryParam("tweet.fields", "author_id,created_at")
                             .build())
                     .header("Authorization", "Bearer " + BEARER_TOKEN)
