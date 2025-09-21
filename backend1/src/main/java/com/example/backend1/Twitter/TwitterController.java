@@ -1,8 +1,11 @@
 package com.example.backend1.Twitter;
 
+import com.example.backend1.Twitter.Tweet;
+import com.example.backend1.Twitter.TwitterService;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 public class TwitterController {
@@ -13,14 +16,27 @@ public class TwitterController {
         this.twitterService = twitterService;
     }
 
+    // ดึงและบันทึก tweets
+    @GetMapping("/save")
+    public String saveTweets(@RequestParam String keyword) {
+        String json = twitterService.searchTweets(keyword); // ดึงจาก Twitter API
+        twitterService.saveTweetsToDB(json); // บันทึกลง DB
+        return "Saved tweets to DB!";
+    }
+
+    // ดึง tweets จาก DB
     @GetMapping("/twitters")
-    public String getTweets(@RequestParam String keyword) {
-        try {
-            Thread.sleep(5000); // delay 5 วินาที ระหว่าง request
-            return twitterService.searchTweets(keyword);
-        } catch (Exception e) {
-            e.printStackTrace();  // แสดง error ใน console
-            return "Error occurred: " + e.getMessage();
-        }
+    public List<Tweet> getTweetsFromDB(@RequestParam(required = false) String keyword) {
+        List<Tweet> tweets = twitterService.getTweetsFromDB(keyword);
+        System.out.println("Tweets from DB: " + tweets.size()); // debug
+        return tweets;
+    }
+
+    //ทดลอง
+    @GetMapping("/save-mock")
+    public String saveMockTweets() {
+        twitterService.saveMockTweets();
+        return "Saved mock tweets to DB!";
     }
 }
+
