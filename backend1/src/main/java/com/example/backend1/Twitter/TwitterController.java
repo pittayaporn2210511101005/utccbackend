@@ -32,7 +32,7 @@ public class TwitterController {
         return tweets;
     }
 
-    //ทดลอง
+    //ทดลองtw อย่าใส่ใจ
     @GetMapping("/save-mock")
     public String saveMockTweets() {
         twitterService.saveMockTweets();

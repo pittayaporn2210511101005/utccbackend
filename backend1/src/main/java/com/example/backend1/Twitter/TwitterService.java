@@ -16,7 +16,7 @@ public class TwitterService {
     private final TweetRepository tweetRepository;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    private static final String BEARER_TOKEN = "ใส่api ของพวกมึงเอง";
+    private static final String BEARER_TOKEN = "ถ้าจะดึงเพิ่ม ใส่api tw ของพวกมึงตรงนี้";
 
     public TwitterService(WebClient.Builder builder, TweetRepository tweetRepository) {
         this.webClient = builder.baseUrl("https://api.twitter.com/2").build();
@@ -29,7 +29,7 @@ public class TwitterService {
                     .uri(uriBuilder -> uriBuilder
                             .path("/tweets/search/recent")
                             .queryParam("query", keyword)
-                            .queryParam("max_results", "100")
+                            .queryParam("max_results", "29")
                             .queryParam("tweet.fields", "author_id,created_at")
                             .build())
                     .header("Authorization", "Bearer " + BEARER_TOKEN)
@@ -80,6 +80,7 @@ public class TwitterService {
         }
     }
 
+    //ทดสอบดึงฐานข้อมูลปลอมๆ อยู่ในไฟล์mock_tweets.json
     public void saveMockTweets() {
         try {
             // อ่าน JSON จากไฟล์
