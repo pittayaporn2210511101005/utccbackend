@@ -8,6 +8,8 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,37 +24,50 @@ public class PantipService {
         try {
             WebDriverManager.chromedriver().setup();
             ChromeOptions options = new ChromeOptions();
-            options.addArguments("--headless"); // ไม่เปิดหน้าต่าง Chrome
+            options.addArguments("--headless"); // รันแบบไม่เปิด Chrome UI
             options.addArguments("--disable-gpu");
             options.addArguments("--window-size=1920,1080");
 
             driver = new ChromeDriver(options);
 
-            // เข้า Pantip search
-            String url = "https://pantip.com/search?q=" + java.net.URLEncoder.encode(keyword, "UTF-8");
+            // เข้า URL Pantip search
+            String url = "https://pantip.com/search?q=" + URLEncoder.encode(keyword, StandardCharsets.UTF_8);
             driver.get(url);
 
-            // รอให้กระทู้โหลด
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
             wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".pt-list-item__title")));
 
+            // หารายการกระทู้ทั้งหมด
             List<WebElement> postContainers = driver.findElements(By.cssSelector(".pt-list-item"));
 
             for (WebElement container : postContainers) {
                 try {
+                    // ดึง title + url
                     WebElement titleElement = container.findElement(By.cssSelector(".pt-list-item__title a"));
-                    String title = titleElement.getText();
+                    String title = titleElement.getText().trim();
                     String link = titleElement.getAttribute("href");
 
+                    // --- ดึง preview ---
                     String preview = "";
+
                     try {
-                        WebElement previewElement = container.findElement(By.cssSelector(".pt-list-item__desc"));
-                        preview = previewElement.getText();
-                    } catch (NoSuchElementException ignored) {}
+                        // 1) ลองหา preview จากคอมเมนต์ (คห.1)
+                        WebElement commentPreview = container.findElement(By.cssSelector(".pt-list-item__sr__comment__inner"));
+                        preview = commentPreview.getText().trim();
+                    } catch (NoSuchElementException e1) {
+                        try {
+                            // 2) ถ้าไม่มีคอมเมนต์ → หา preview จากเนื้อหากระทู้แทน
+                            WebElement contentPreview = container.findElement(By.cssSelector(".pt-list-item__sr__content__inner"));
+                            preview = contentPreview.getText().trim();
+                        } catch (NoSuchElementException e2) {
+                            preview = "";
+                        }
+                    }
 
                     results.add(new PantipPost(title, link, preview));
 
-                } catch (NoSuchElementException ignored) {}
+                } catch (NoSuchElementException ignored) {
+                }
             }
 
         } catch (Exception e) {

@@ -13,12 +13,27 @@ public class PantipPost {
         this.preview = preview;
     }
 
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
+    public String getTitle() {
+        return title;
+    }
 
-    public String getUrl() { return url; }
-    public void setUrl(String url) { this.url = url; }
+    public void setTitle(String title) {
+        this.title = title;
+    }
 
-    public String getPreview() { return preview; }
-    public void setPreview(String preview) { this.preview = preview; }
+    public String getUrl() {
+        return url;
+    }
+
+    public void setUrl(String url) {
+        this.url = url;
+    }
+
+    public String getPreview() {
+        return preview;
+    }
+
+    public void setPreview(String preview) {
+        this.preview = preview;
+    }
 }
