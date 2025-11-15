@@ -25,111 +25,105 @@ def ask_llm(prompt):
         return res.choices[0].message.content.strip()
     except Exception as e:
         print("LLM ERROR:", e)
-        return "neutral"
-
+        return ""
 
 # ================================
-# 1) Sentiment
+# Extract label from messy response
+# ================================
+def extract_label(text, choices, default):
+    t = text.lower()
+    for c in choices:
+        if c.lower() in t:
+            return c
+    return default
+
+# ================================
+# 1) SENTIMENT
 # ================================
 def detect_sentiment(text):
     prompt = f"""
     วิเคราะห์ sentiment ของข้อความต่อไปนี้:
 
-    กฎ:
-    - ถามเฉยๆ = neutral
-    - ขอรีวิว = neutral
-    - ข้อมูลทั่วไป = neutral
-    - บ่น โวยวาย ไม่พอใจ = negative
-    - ชื่นชม = positive
-
-    ตอบ:
-    - positive
-    - neutral
-    - negative
+    ให้ตอบเป็นคำเดียวเท่านั้น (ห้ามอธิบาย):
+    positive
+    neutral
+    negative
 
     ข้อความ: "{text}"
     """
-    return ask_llm(prompt)
 
+    raw = ask_llm(prompt)
+    return extract_label(raw, ["positive", "neutral", "negative"], "neutral")
 
 # ================================
-# 2) NSFW / Toxic / Hate
+# 2) NSFW / TOXIC / HATE
 # ================================
 def detect_nsfw_llm(text):
     prompt = f"""
-    วิเคราะห์ประเภทของข้อความต่อไปนี้:
+    วิเคราะห์ประเภทข้อความนี้:
 
-    กฎ:
-    - ถ้าเป็นคำถาม, ขอข้อมูล, ขอรีวิว ไม่มีคำหยาบ = normal
-    - คำเชิงเพศหรือ 18+ = sexual หรือ pornographic
-    - ด่า/หยาบคาย/ก้าวร้าว = abusive หรือ toxic
-    - ดูถูก/เหยียด/ล้อเลียน = hate หรือ bully
-    - ขู่ทำร้าย = threatening
+    เลือกเพียง 1 คำ:
+    sexual, pornographic, abusive, toxic, hate,
+    bully, threatening, violent, normal
 
-    เลือกเพียง 1 label:
-    sexual, pornographic, abusive, toxic, hate, bully,
-    threatening, violent, normal
+    ห้ามอธิบายเพิ่มเติม
 
     ข้อความ: "{text}"
     """
-    return ask_llm(prompt)
 
+    raw = ask_llm(prompt)
+    return extract_label(
+        raw,
+        ["sexual", "pornographic", "abusive", "toxic", "hate",
+         "bully", "threatening", "violent", "normal"],
+        "normal"
+    )
 
 # ================================
-# 3) Politeness
+# 3) POLITENESS
 # ================================
 def detect_politeness(text):
     prompt = f"""
-    วิเคราะห์ระดับความสุภาพของข้อความนี้:
+    วิเคราะห์ระดับความสุภาพของประโยคนี้:
 
-    กฎ:
-    - คำถามทั่วไป, ขอรีวิว, หาเพื่อน, ชวนคุย = neutral
-    - คำหยาบ ด่า ประชดแรง = impolite
-    - มีครับ/ค่ะ/นะคะ/คะ/ครับ = polite
-    - ไม่เข้าเกณฑ์ใดๆ = neutral
-
-    ตอบ:
+    ตอบคำเดียว:
     polite
     neutral
     impolite
 
     ข้อความ: "{text}"
     """
-    return ask_llm(prompt)
-
+    raw = ask_llm(prompt)
+    return extract_label(raw, ["polite", "neutral", "impolite"], "neutral")
 
 # ================================
-# 4) FINAL LABEL
+# 4) FINAL LABEL (ใช้ label ที่ได้ ไม่เรียก LLM ซ้ำ)
 # ================================
-def final_classification(text):
-    s = detect_sentiment(text)
-    n = detect_nsfw_llm(text)
-    p = detect_politeness(text)
+def final_classification(sentiment, nsfw, politeness):
 
     # 18+
-    if n in ["sexual", "pornographic"]:
+    if nsfw in ["sexual", "pornographic"]:
         return "ล่อแหลม / 18+"
 
-    # toxic
-    if n in ["abusive", "toxic", "hate", "bully", "threatening", "violent"]:
+    # toxic / hate / abusive
+    if nsfw in ["abusive", "toxic", "hate", "bully", "threatening", "violent"]:
         return "ด่า / ก้าวร้าว / เหยียด"
 
     # impolite
-    if p == "impolite":
+    if politeness == "impolite":
         return "หยาบคาย"
 
     # polite + positive
-    if p == "polite" and s == "positive":
+    if politeness == "polite" and sentiment == "positive":
         return "สุภาพ-ชม"
 
-    if s == "positive":
+    if sentiment == "positive":
         return "ชม"
 
-    if s == "negative":
+    if sentiment == "negative":
         return "บ่น / ตำหนิ"
 
     return "ปกติ"
-
 
 # ================================
 # DATABASE
@@ -182,9 +176,9 @@ def detect_faculty(text):
 df["faculty"] = df["text"].apply(detect_faculty)
 
 # ================================
-# RUN ANALYSIS (with progress)
+# RUN ANALYSIS
 # ================================
-print("⚙️ Running full AI analysis ...")
+print("⚙️ Running AI analysis ...")
 
 sentiments = []
 nsfws = []
@@ -199,7 +193,7 @@ for i, text in enumerate(df["text"], start=1):
     s = detect_sentiment(text)
     n = detect_nsfw_llm(text)
     p = detect_politeness(text)
-    f = final_classification(text)
+    f = final_classification(s, n, p)
 
     sentiments.append(s)
     nsfws.append(n)
@@ -210,7 +204,6 @@ df["sentiment"] = sentiments
 df["nsfw"] = nsfws
 df["politeness"] = polites
 df["final_label"] = finals
-
 
 # ================================
 # SAVE
