@@ -1,6 +1,7 @@
 import pandas as pd
 from sqlalchemy import create_engine
 from openai import OpenAI
+import requests
 
 # ================================
 # OLLAMA CLIENT
@@ -9,6 +10,20 @@ client = OpenAI(
     base_url="http://localhost:11434/v1",
     api_key="ollama"
 )
+
+# ================================
+# LOAD CUSTOM KEYWORDS FROM BACKEND
+# ================================
+def load_custom_keywords():
+    url = "http://localhost:8082/custom-keywords/all"
+    data = requests.get(url).json()
+    return {item["keyword"]: item["sentiment"] for item in data}
+
+def apply_custom_dict(text, ai_sentiment, custom_dict):
+    for word, sent in custom_dict.items():
+        if word in text:
+            return sent  # Override sentiment by user-configured label
+    return ai_sentiment
 
 print("🧠 Loading LLM ...")
 
@@ -43,20 +58,14 @@ def extract_label(text, choices, default):
 def detect_sentiment(text):
     prompt = f"""
     วิเคราะห์ sentiment ของข้อความต่อไปนี้:
-
-    ให้ตอบเป็นคำเดียวเท่านั้น (ห้ามอธิบาย):
-    positive
-    neutral
-    negative
-
+    ให้ตอบเป็นคำเดียว: positive, neutral, negative
     ข้อความ: "{text}"
     """
-
     raw = ask_llm(prompt)
     return extract_label(raw, ["positive", "neutral", "negative"], "neutral")
 
 # ================================
-# 2) NSFW / TOXIC / HATE
+# 2) NSFW
 # ================================
 def detect_nsfw_llm(text):
     prompt = f"""
@@ -66,11 +75,8 @@ def detect_nsfw_llm(text):
     sexual, pornographic, abusive, toxic, hate,
     bully, threatening, violent, normal
 
-    ห้ามอธิบายเพิ่มเติม
-
     ข้อความ: "{text}"
     """
-
     raw = ask_llm(prompt)
     return extract_label(
         raw,
@@ -84,9 +90,9 @@ def detect_nsfw_llm(text):
 # ================================
 def detect_politeness(text):
     prompt = f"""
-    วิเคราะห์ระดับความสุภาพของประโยคนี้:
+    วิเคราะห์ระดับความสุภาพ:
 
-    ตอบคำเดียว:
+    ตอบ:
     polite
     neutral
     impolite
@@ -97,23 +103,18 @@ def detect_politeness(text):
     return extract_label(raw, ["polite", "neutral", "impolite"], "neutral")
 
 # ================================
-# 4) FINAL LABEL (ใช้ label ที่ได้ ไม่เรียก LLM ซ้ำ)
+# 4) FINAL LABEL
 # ================================
 def final_classification(sentiment, nsfw, politeness):
-
-    # 18+
     if nsfw in ["sexual", "pornographic"]:
         return "ล่อแหลม / 18+"
 
-    # toxic / hate / abusive
     if nsfw in ["abusive", "toxic", "hate", "bully", "threatening", "violent"]:
         return "ด่า / ก้าวร้าว / เหยียด"
 
-    # impolite
     if politeness == "impolite":
         return "หยาบคาย"
 
-    # polite + positive
     if politeness == "polite" and sentiment == "positive":
         return "สุภาพ-ชม"
 
@@ -176,6 +177,12 @@ def detect_faculty(text):
 df["faculty"] = df["text"].apply(detect_faculty)
 
 # ================================
+# LOAD custom_dict HERE (สำคัญมาก!!)
+# ================================
+custom_dict = load_custom_keywords()
+print("📌 Loaded custom keywords:", custom_dict)
+
+# ================================
 # RUN ANALYSIS
 # ================================
 print("⚙️ Running AI analysis ...")
@@ -190,12 +197,17 @@ total = len(df)
 for i, text in enumerate(df["text"], start=1):
     print(f"Analyzing {i}/{total}...")
 
-    s = detect_sentiment(text)
+    # AI sentiment
+    ai_sent = detect_sentiment(text)
+
+    # Override sentiment by custom keywords
+    final_sent = apply_custom_dict(text, ai_sent, custom_dict)
+
     n = detect_nsfw_llm(text)
     p = detect_politeness(text)
-    f = final_classification(s, n, p)
+    f = final_classification(final_sent, n, p)
 
-    sentiments.append(s)
+    sentiments.append(final_sent)
     nsfws.append(n)
     polites.append(p)
     finals.append(f)
@@ -206,7 +218,7 @@ df["politeness"] = polites
 df["final_label"] = finals
 
 # ================================
-# SAVE
+# SAVE TO DB
 # ================================
 df.to_sql("social_analysis", con=engine, if_exists="replace", index=False)
 
