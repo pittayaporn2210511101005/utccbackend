@@ -64,7 +64,12 @@ public class PantipService {
                         }
                     }
 
-                    results.add(new PantipPost(title, link, preview));
+                    PantipPost post = new PantipPost();  // ใช้ constructor เปล่า
+                    post.setTitle(title);
+                    post.setUrl(link);
+                    post.setPreview(preview);
+
+                    results.add(post);
 
                 } catch (NoSuchElementException ignored) {
                 }

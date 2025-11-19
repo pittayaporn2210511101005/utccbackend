@@ -1,39 +1,52 @@
 package com.example.backend1.Pantip;
 
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "pantip_post")
 public class PantipPost {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
     private String title;
+
+    @Column(length = 500)
     private String url;
+
+    @Column(length = 10000)
     private String preview;
 
-    public PantipPost() {}
+    @Column(length = 200)
+    private String author;
 
-    public PantipPost(String title, String url, String preview) {
-        this.title = title;
-        this.url = url;
-        this.preview = preview;
-    }
+    @Column(length = 30000)
+    private String content;
 
-    public String getTitle() {
-        return title;
-    }
+    @Column(length = 200)
+    private String postTime;
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
 
-    public String getUrl() {
-        return url;
-    }
 
-    public void setUrl(String url) {
-        this.url = url;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public String getPreview() {
-        return preview;
-    }
+    public String getTitle() { return title; }
+    public void setTitle(String title) { this.title = title; }
 
-    public void setPreview(String preview) {
-        this.preview = preview;
-    }
+    public String getUrl() { return url; }
+    public void setUrl(String url) { this.url = url; }
+
+    public String getPreview() { return preview; }
+    public void setPreview(String preview) { this.preview = preview; }
+
+    public String getAuthor() { return author; }
+    public void setAuthor(String author) { this.author = author; }
+
+    public String getContent() { return content; }
+    public void setContent(String content) { this.content = content; }
+
+    public String getPostTime() { return postTime; }
+    public void setPostTime(String postTime) { this.postTime = postTime; }
 }
