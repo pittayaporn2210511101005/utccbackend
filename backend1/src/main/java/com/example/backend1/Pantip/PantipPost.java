@@ -1,6 +1,8 @@
 package com.example.backend1.Pantip;
 
 import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "pantip_post")
@@ -28,7 +30,17 @@ public class PantipPost {
     private String postTime;
 
 
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PantipComment> comments = new ArrayList<>();
 
+    public PantipPost() {
+    }
+
+    public PantipPost(String title, String url, String preview) {
+        this.title = title;
+        this.url = url;
+        this.preview = preview;
+    }
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -49,4 +61,7 @@ public class PantipPost {
 
     public String getPostTime() { return postTime; }
     public void setPostTime(String postTime) { this.postTime = postTime; }
+
+    public List<PantipComment> getComments() { return comments; }
+    public void setComments(List<PantipComment> comments) { this.comments = comments; }
 }

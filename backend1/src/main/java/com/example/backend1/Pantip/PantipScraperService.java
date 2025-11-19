@@ -17,11 +17,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.NoSuchElementException;
 
+//ถ้าจะแก้ตรงช่องinput เงื่อนไขมันอยู่หน้านี้ ตั้งแต่บรรทัด224ลงไป
 @Service
 public class PantipScraperService {
 
     private final PantipPostRepository postRepo;
     private final PantipCommentRepository commentRepo;
+    private List<PantipPost> tempPosts = new ArrayList<>();
+
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -215,5 +218,119 @@ public class PantipScraperService {
         jdbcTemplate.execute("ALTER TABLE pantip_post AUTO_INCREMENT = 1");
         System.out.println("  รีเซ็ตข้อมูลทั้งหมดและตั้งค่า ID ให้เริ่มที่ 1 ใหม่เรียบร้อยแล้ว!");
     }
+
+
+
+    //อันนี้ temp
+    public List<PantipPost> scrapePantipTemp(String keyword) {
+
+        tempPosts.clear();  // ล้าง temp ก่อน
+
+        WebDriverManager.chromedriver().setup();
+        ChromeOptions options = new ChromeOptions();
+        options.addArguments("--headless=new", "--disable-gpu", "--no-sandbox");
+        WebDriver driver = new ChromeDriver(options);
+
+        try {
+            int page = 1;
+
+            while (true) {
+
+                String searchUrl = "https://pantip.com/search?q=" +
+                        URLEncoder.encode(keyword, StandardCharsets.UTF_8) +
+                        "&page=" + page;
+
+                driver.get(searchUrl);
+                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(20));
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(".pt-list-item__title a")));
+
+                List<WebElement> posts = driver.findElements(By.cssSelector(".pt-list-item__title a"));
+                if (posts.isEmpty()) break;
+
+                for (int i = 0; i < posts.size(); i++) {
+
+                    posts = driver.findElements(By.cssSelector(".pt-list-item__title a"));
+                    WebElement el = posts.get(i);
+
+                    String title = el.getText();
+                    String url = el.getAttribute("href");
+
+                    driver.get(url);
+
+                    String author = "";
+                    try { author = driver.findElement(By.cssSelector(".display-post-name")).getText(); }
+                    catch (Exception e) {}
+
+                    String content = "";
+                    try { content = driver.findElement(By.cssSelector(".display-post-story")).getText(); }
+                    catch (Exception e) {}
+
+                    String postTime = "";
+                    try { postTime = driver.findElement(By.cssSelector(".display-post-timestamp")).getText(); }
+                    catch (Exception e) {}
+
+                    PantipPost post = new PantipPost();
+                    post.setTitle(title);
+                    post.setUrl(url);
+                    post.setPreview("");
+                    post.setAuthor(author);
+                    post.setContent(content);
+                    post.setPostTime(postTime);
+
+                    // ⭐ เก็บคอมเมนต์ลงใน list
+                    List<PantipComment> commentList = new ArrayList<>();
+
+                    List<WebElement> commentEls = driver.findElements(By.cssSelector(".display-post-wrapper.section-comment"));
+                    for (WebElement cEl : commentEls) {
+                        try {
+                            String text = cEl.findElement(By.cssSelector(".display-post-story")).getText();
+
+                            PantipComment c = new PantipComment();
+                            c.setText(text);
+                            c.setAuthor("");       // เติมได้ตามต้องการ
+                            c.setCommentedAt("");  // เติมได้ตามต้องการ
+
+                            commentList.add(c);
+
+                        } catch (Exception e) {}
+                    }
+
+                    post.setComments(commentList);
+
+                    // ⭐ ไม่ save DB → เก็บใน tempPosts
+                    tempPosts.add(post);
+                }
+
+                page++;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+
+        } finally {
+            driver.quit();
+        }
+
+        return tempPosts;
+    }//บันทึกลงdb เฉพาะตอนทีกดวิเคราห์
+    public void saveTempToDB() {
+        for (PantipPost p : tempPosts) {
+            PantipPost savedPost = postRepo.save(p);
+
+            for (PantipComment c : p.getComments()) {
+                c.setPost(savedPost);
+                commentRepo.save(c);
+            }
+        }
+        tempPosts.clear();
+    }//คลีนเทม
+    public void clearTemp() {
+        tempPosts.clear();
+    }
+    public List<PantipPost> getTemp() {
+        return tempPosts;
+    }
+
+
 }
 

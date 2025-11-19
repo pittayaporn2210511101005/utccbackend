@@ -14,6 +14,7 @@ public class PantipScheduler {
         this.scraper = scraper;
     }
 
+    //อันนี้ไม่เกี่ยว อันนี้ดึงอัตนโม
     // ทุกวันเวลา 00:00 น. (โซนเวลาไทย)
     @Scheduled(cron = "0 0 0 * * *", zone = "Asia/Bangkok")
     public void runDaily() {
