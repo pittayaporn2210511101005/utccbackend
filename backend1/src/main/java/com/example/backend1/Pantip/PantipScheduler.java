@@ -28,7 +28,6 @@ public class PantipScheduler {
         );
 
         for (String kw : keywords) {
-
             scraper.scrapePantip(kw);
 
             try { Thread.sleep(1500); } catch (InterruptedException ignored) {}
